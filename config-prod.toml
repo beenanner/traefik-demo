@@ -1,0 +1,14 @@
+logLevel = "DEBUG"
+InsecureSkipVerify = true
+defaultEntryPoints = ["http", "https"]
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+  [entryPoints.https]
+  address = ":443"
+
+[docker]
+
+watch = true
+exposedbydefault = false
+swarmmode = true
