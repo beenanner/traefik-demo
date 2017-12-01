@@ -1,0 +1,67 @@
+version: '3.2'
+
+services:
+  whoami:
+    image: emilevauge/whoami
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+      resources:
+        limits:
+            memory: 100M
+      labels:
+        - "com.acme.docker=whoami"
+        - "traefik.enable=true"
+        - "traefik.backend=whoami"
+        - "traefik.backend.loadbalancer.swarm=true"
+        - "traefik.docker.network=traefik-net"
+        - "traefik.frontend.rule=Host:whoami.acme.com"
+        - "traefik.protocol=http"
+        - "traefik.frontend.passHostHeader=true"
+        - "traefik.port=80"
+    networks:
+      - traefik-net
+  traefik:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-custom-traefik:${TAG:-latest}
+    command:
+      - "--docker"
+      - "--docker.swarmmode"
+      - "--docker.domain=acme.com"
+      - "--docker.watch"
+      - "--web"
+      - "--web.metrics"
+      - "--web.metrics.prometheus"
+      - "--configFile=/etc/traefik/traefik-${DEPLOY_ENVIRONMENT:-prod}.toml"
+    ports:
+      - target: 80
+        published: 8080
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 44380
+        protocol: tcp
+        mode: host
+    networks:
+      - traefik-net
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 500M
+networks:
+  traefik-net:
